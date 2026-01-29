@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.13)
 
 set(NAME youme-transformer)
 
@@ -31,8 +31,11 @@ pico_sdk_init()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/midi_uart_lib)
 
+set(PICO_TINYUSB_PATH ${CMAKE_CURRENT_LIST_DIR}/lib/tinyusb)
+
 set(SOURCE_FILES
     src/passthrough.cpp
+    src/usb_descriptors.c
 )
 
 add_executable(${NAME}
@@ -50,6 +53,7 @@ target_link_libraries(${NAME}
     pico_stdlib
     ring_buffer_lib
     midi_uart_lib
+    tinyusb_device
 )
 
 target_compile_definitions(${NAME} PRIVATE)
