@@ -8,15 +8,6 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h> // For memset
-
-#ifndef sig_MidiParser_MESSAGE_BUFFER_SIZE
-#define sig_MidiParser_MESSAGE_BUFFER_SIZE 4
-#endif
-
-#ifndef sig_MidiParser_SYSEX_BUFFER_SIZE
-#define sig_MidiParser_SYSEX_BUFFER_SIZE 32
-#endif
 
 /**
  * MIDI Status Byte Constants
@@ -80,18 +71,18 @@ extern "C" {
 bool sig_MidiParser_isNoteOff(uint8_t* message);
 
 /**
- * Signaletic MIDI Parser
- *
- * Parses incoming MIDI bytes and invokes callbacks
- * when complete messages are ready. Includes streaming support
- * for System Exclusive messages.
- */
-
-/**
  * @brief Message callback which will be invoked when a complete,
  * non-SysEx MIDI message is parsed.
  */
 typedef void (*sig_MidiParser_MessageCallback)(
+    uint8_t* message, size_t size, void* userData);
+
+/**
+ * @brief A message callback that does nothing.
+ * This can be used if you don't need to read
+ * regular MIDI messages.
+ */
+void sig_MidiParser_noOpMessageCallback(
     uint8_t* message, size_t size, void* userData);
 
 /**
@@ -108,18 +99,35 @@ typedef void (*sig_MidiParser_MessageCallback)(
 typedef void (*sig_MidiParser_SysexChunkCallback)(
     uint8_t* sysexData, size_t size, bool isFinal, void* userData);
 
+/**
+ * @brief A sysex chunk callback that does nothing.
+ * This can be used if you don't need sysex support.
+ */
+void sig_MidiParser_noOpSysexCallback(
+    uint8_t* sysexData, size_t size, bool isFinal,
+    void* userData);
+
+/**
+ * Signaletic MIDI Parser
+ *
+ * Parses incoming MIDI bytes and invokes callbacks
+ * when complete messages are ready. Includes streaming support
+ * for System Exclusive messages.
+ */
 struct sig_MidiParser {
     sig_MidiParser_MessageCallback callback;
     sig_MidiParser_SysexChunkCallback sysexCallback;
     void* userData;
 
     uint8_t runningStatusByte;
-    uint8_t messageBuffer[sig_MidiParser_MESSAGE_BUFFER_SIZE];
+    uint8_t* messageBuffer;
+    size_t messageBufferSize;
     uint32_t msgLen;
     uint32_t expectedDataBytes;
 
     bool isParsingSysex;
-    uint8_t sysexBuffer[sig_MidiParser_SYSEX_BUFFER_SIZE];
+    uint8_t* sysexBuffer;
+    size_t sysexBufferSize;
     uint32_t sysexWriteIdx;
 };
 
@@ -137,6 +145,8 @@ void sig_MidiParser_reset(struct sig_MidiParser* self);
  * @param userData user context that will be passed to all callbacks
  */
 void sig_MidiParser_init(struct sig_MidiParser* self,
+    uint8_t* messageBuffer, size_t messageBufferSize,
+    uint8_t* sysexBuffer, size_t sysexBufferSize,
     sig_MidiParser_MessageCallback callback,
     sig_MidiParser_SysexChunkCallback sysexCallback,
     void* userData);

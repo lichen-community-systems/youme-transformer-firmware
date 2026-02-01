@@ -3,8 +3,8 @@
 #include "midi_uart_lib_config.h"
 #include "led.h"
 #include "midi-port.h"
-#include "uart-midi.h"
-#include "usb-midi.h"
+#include "uart-midi-port.h"
+#include "usb-midi-device-port.h"
 #include "midi-logger.h"
 
 #define CPU_CLOCK_SPEED_KHZ 240000
@@ -13,13 +13,12 @@
 #define MIDI_UART_TX_GPIO 0
 #define MIDI_UART_RX_GPIO 1
 
-#define READ_BUFFER_SIZE 128
 #define LOG_BUFFER_SIZE 1024 * 100
 
 LED mainLED;
 LED noteLED;
-UARTMidiPort<READ_BUFFER_SIZE> uartMidiPort;
-USBMidiDevicePort<READ_BUFFER_SIZE> usbMidiDevicePort;
+UARTMidiPort uartMidiPort;
+USBMidiDevicePort usbMidiDevicePort;
 MIDILogger<LOG_BUFFER_SIZE> midiLogger;
 
 void handleLEDStateForMIDIMessage(uint8_t* message) {
@@ -69,16 +68,33 @@ int main() {
     mainLED.init(25);
     noteLED.init(24);
 
-    uartMidiPort.init(DEFAULT_UART_CONFIG, onMIDIMessage, onSysexChunk, &uartMidiPort);
-    usbMidiDevicePort.init(onMIDIMessage, onSysexChunk, &usbMidiDevicePort);
+    UARTConfig uartConfig = {
+        .uartNum = MIDI_UART_NUM,
+        .txGPIO = MIDI_UART_TX_GPIO,
+        .rxGPIO = MIDI_UART_RX_GPIO
+    };
+
+    MidiParserConfig uartParserConfig = {
+        .onMIDIMessage = onMIDIMessage,
+        .onSysexChunk = onSysexChunk,
+        .userData = &uartMidiPort
+    };
+
+    uartMidiPort.init(uartConfig, uartParserConfig);
+    MidiParserConfig usbParserConfig = {
+        .onMIDIMessage = onMIDIMessage,
+        .onSysexChunk = onSysexChunk,
+        .userData = &usbMidiDevicePort
+    };
+    usbMidiDevicePort.init(usbParserConfig);
+
     midiLogger.init();
 
     mainLED.on();
 
     while (true) {
+        uartMidiPort.tick();
         usbMidiDevicePort.tick();
-        (void) uartMidiPort.read();
-        (void) usbMidiDevicePort.read();
     }
 
     noteLED.off();

@@ -14,20 +14,27 @@ bool sig_MidiParser_isNoteOff(uint8_t* message) {
     return false;
 }
 
-static void sig_MidiParser_noOpMessageCallback(
+void sig_MidiParser_noOpMessageCallback(
     uint8_t* message, size_t size, void* userData) {
     (void)message;
     (void)size;
     (void)userData;
 }
 
-static void sig_MidiParser_noOpSysexCallback(
+void sig_MidiParser_noOpSysexCallback(
     uint8_t* sysexData, size_t size, bool isFinal,
     void* userData) {
     (void)sysexData;
     (void)size;
     (void)isFinal;
     (void)userData;
+}
+
+static void sig_MidiParser_clearBuffer(uint8_t* buffer,
+    size_t size) {
+    for (size_t i = 0; i < size; ++i) {
+        buffer[i] = 0;
+    }
 }
 
 void sig_MidiParser_reset(struct sig_MidiParser* self) {
@@ -37,14 +44,23 @@ void sig_MidiParser_reset(struct sig_MidiParser* self) {
     self->isParsingSysex = 0;
     self->sysexWriteIdx = 0;
 
-    memset(self->messageBuffer, 0, sig_MidiParser_MESSAGE_BUFFER_SIZE);
-    memset(self->sysexBuffer, 0, sig_MidiParser_SYSEX_BUFFER_SIZE);
+    sig_MidiParser_clearBuffer(self->messageBuffer,
+        self->messageBufferSize);
+    sig_MidiParser_clearBuffer(self->sysexBuffer,
+        self->sysexBufferSize);
 }
 
 void sig_MidiParser_init(struct sig_MidiParser* self,
+    uint8_t* messageBuffer, size_t messageBufferSize,
+    uint8_t* sysexBuffer, size_t sysexBufferSize,
     sig_MidiParser_MessageCallback callback,
     sig_MidiParser_SysexChunkCallback sysexCallback,
     void* userData) {
+    self->messageBuffer = messageBuffer;
+    self->messageBufferSize = messageBufferSize;
+    self->sysexBuffer = sysexBuffer;
+    self->sysexBufferSize = sysexBufferSize;
+
     self->callback = callback ? callback :
         sig_MidiParser_noOpMessageCallback;
     self->sysexCallback = sysexCallback ? sysexCallback :
@@ -128,7 +144,7 @@ void sig_MidiParser_startSysexMessage(
     self->sysexWriteIdx = 0;
     self->runningStatusByte = 0;
 
-    if (self->sysexWriteIdx < sig_MidiParser_SYSEX_BUFFER_SIZE) {
+    if (self->sysexWriteIdx < self->sysexBufferSize) {
         self->sysexBuffer[self->sysexWriteIdx] = byte;
         self->sysexWriteIdx++;
     }
@@ -148,7 +164,7 @@ void sig_MidiParser_handleSysexChunk(
     self->sysexCallback(self->sysexBuffer, self->sysexWriteIdx,
         false, self->userData);
     self->sysexWriteIdx = 0;
-    if (self->sysexWriteIdx < sig_MidiParser_SYSEX_BUFFER_SIZE) {
+    if (self->sysexWriteIdx < self->sysexBufferSize) {
         self->sysexBuffer[self->sysexWriteIdx] = byte;
         self->sysexWriteIdx++;
     }
@@ -156,7 +172,7 @@ void sig_MidiParser_handleSysexChunk(
 
 void sig_MidiParser_handleSysexByte(
     struct sig_MidiParser* self, uint8_t byte) {
-    if (self->sysexWriteIdx < sig_MidiParser_SYSEX_BUFFER_SIZE) {
+    if (self->sysexWriteIdx < self->sysexBufferSize) {
         self->sysexBuffer[self->sysexWriteIdx] = byte;
         self->sysexWriteIdx++;
     } else {
