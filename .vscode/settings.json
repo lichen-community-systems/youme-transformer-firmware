@@ -4,5 +4,6 @@
     "cmake.configureSettings": {
         "PICO_SDK_PATH": "${workspaceFolder}/lib/pico-sdk"
     },
-    "cmake.sourceDirectory": "${workspaceFolder}"
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "cortex-debug.variableUseNaturalFormat": false
 }

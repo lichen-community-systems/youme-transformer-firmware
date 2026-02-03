@@ -21,6 +21,7 @@ set(PICO_SDK_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib/pico-sdk)
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
 
+set(PICO_PIO_USB_PATH ${CMAKE_CURRENT_LIST_DIR}/lib/pico-pio-usb)
 set(PICO_TINYUSB_PATH ${CMAKE_CURRENT_LIST_DIR}/lib/tinyusb)
 
 # Compiler settings
@@ -32,6 +33,7 @@ add_compile_options(-Wall)
 pico_sdk_init()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/midi_uart_lib)
+add_subdirectory(${PICO_PIO_USB_PATH})
 
 set(SOURCE_FILES
     src/passthrough.cpp
@@ -51,13 +53,15 @@ target_include_directories(${NAME} PRIVATE
 )
 
 target_link_libraries(${NAME}
+    pico_pio_usb
     pico_stdlib
     ring_buffer_lib
     midi_uart_lib
     tinyusb_device
+    tinyusb_host
 )
 
-target_compile_definitions(${NAME} PRIVATE)
+target_compile_definitions(${NAME} PRIVATE PIO_USB_USE_TINYUSB)
 
 pico_add_extra_outputs(${NAME})
 
@@ -75,3 +79,20 @@ install(FILES
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 set(CPACK_GENERATOR "ZIP" "TGZ")
 include(CPack)
+
+# Mark TinyUSB includes as system headers
+# To suppress warnings when -Wextra is set.
+if(TARGET tinyusb_common_base)
+    get_target_property(TINYUSB_INCLUDES tinyusb_common_base INTERFACE_INCLUDE_DIRECTORIES)
+    target_include_directories(tinyusb_common_base SYSTEM INTERFACE ${TINYUSB_INCLUDES})
+endif()
+
+if(TARGET tinyusb_device)
+    get_target_property(TINYUSB_INCLUDES tinyusb_device INTERFACE_INCLUDE_DIRECTORIES)
+    target_include_directories(tinyusb_device SYSTEM INTERFACE ${TINYUSB_INCLUDES})
+endif()
+
+if(TARGET tinyusb_host)
+    get_target_property(TINYUSB_INCLUDES tinyusb_host INTERFACE_INCLUDE_DIRECTORIES)
+    target_include_directories(tinyusb_host SYSTEM INTERFACE ${TINYUSB_INCLUDES})
+endif()

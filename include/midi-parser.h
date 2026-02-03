@@ -93,19 +93,18 @@ void sig_MidiParser_noOpMessageCallback(
  *
  * @param sysexData pointer to the SysEx data chunk
  * @param size size of the SysEx data chunk
- * @param isFinal true if this chunk is the final chunk of the SysEx message
  * @param userData user context pointer passed during parser initialization
+ * @param isFinal true if this chunk is the final chunk of the SysEx message
  */
 typedef void (*sig_MidiParser_SysexChunkCallback)(
-    uint8_t* sysexData, size_t size, bool isFinal, void* userData);
+    uint8_t* sysexData, size_t size, void* userData, bool isFinal);
 
 /**
  * @brief A sysex chunk callback that does nothing.
  * This can be used if you don't need sysex support.
  */
 void sig_MidiParser_noOpSysexCallback(
-    uint8_t* sysexData, size_t size, bool isFinal,
-    void* userData);
+    uint8_t* sysexData, size_t size, void* userData, bool isFinal);
 
 /**
  * Signaletic MIDI Parser

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm> // For min()
 #include "midi_uart_lib.h"
 #include "midi-port.h"
 
@@ -19,7 +18,7 @@ static const UARTConfig DEFAULT_UART_CONFIG = {
 template<size_t messageBufferSize = 4,
     size_t sysexBufferSize = 32,
     size_t readBufferSize = 4>
-class UARTMidiPort: MidiPort<
+class UARTMidiPort: public MidiPort<
     messageBufferSize, sysexBufferSize, readBufferSize> {
 public:
     void* midi_uart;
@@ -44,17 +43,14 @@ public:
         size_t numBytesRead = readBlock();
 
         while (numBytesRead > 0) {
-            size_t bytesToFeed = std::min(numBytesRead,
-                readBufferSize);
-
             sig_MidiParser_feedBytes(&this->midiParser,
-                this->readBuffer, bytesToFeed);
+                this->readBuffer, numBytesRead);
 
             numBytesRead = readBlock();
         }
     }
 
-    size_t write(uint8_t* buffer, uint32_t numBytes) {
+    void write(uint8_t* buffer, uint32_t numBytes) {
         uint8_t bytesWritten = midi_uart_write_tx_buffer(
                 midi_uart, buffer, numBytes);
 
@@ -63,7 +59,5 @@ public:
         }
 
         midi_uart_drain_tx_buffer(midi_uart);
-
-        return bytesWritten;
     }
 };

@@ -22,12 +22,11 @@ void sig_MidiParser_noOpMessageCallback(
 }
 
 void sig_MidiParser_noOpSysexCallback(
-    uint8_t* sysexData, size_t size, bool isFinal,
-    void* userData) {
+    uint8_t* sysexData, size_t size, void* userData, bool isFinal) {
     (void)sysexData;
     (void)size;
-    (void)isFinal;
     (void)userData;
+    (void)isFinal;
 }
 
 static void sig_MidiParser_clearBuffer(uint8_t* buffer,
@@ -155,7 +154,7 @@ void sig_MidiParser_endSysexMessage(
     self->isParsingSysex = 0;
     self->runningStatusByte = 0;
     self->sysexCallback(self->sysexBuffer, self->sysexWriteIdx,
-        true, self->userData);
+        self->userData, true);
     self->sysexWriteIdx = 0;
 }
 
@@ -206,7 +205,8 @@ void sig_MidiParser_handleCompleteMIDIMessage(struct sig_MidiParser* self) {
     self->messageBuffer[0] = self->runningStatusByte;
 }
 
-void sig_MidiParser_feedByte(struct sig_MidiParser* self, uint8_t byte) {
+inline void sig_MidiParser_feedByte(struct sig_MidiParser* self,
+    uint8_t byte) {
     // Real-time messages (0xF8-0xFF) can occur at any time,
     // and are only single byte messages, so can be dispatched immediately.
     if (byte >= 0xF8) {
