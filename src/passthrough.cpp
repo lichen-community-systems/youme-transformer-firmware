@@ -35,6 +35,9 @@ void handleLEDStateForMIDIMessage(uint8_t* message) {
 void writeMessageFromUART(uint8_t* message, size_t size,
     void* userData) {
     (void) userData;
+
+    handleLEDStateForMIDIMessage(message);
+
     // Write to all output ports.
     uartMidiPort.write(message, size);
     usbDevice.write(message, size);
@@ -44,6 +47,9 @@ void writeMessageFromUART(uint8_t* message, size_t size,
 void writeMessageFromUSBDevice(uint8_t* message, size_t size,
     void* userData) {
     (void) userData;
+
+    handleLEDStateForMIDIMessage(message);
+
     // Only write to the UART and USB host port;
     // don't echo the message back to the USB device port.
     uartMidiPort.write(message, size);
@@ -53,6 +59,8 @@ void writeMessageFromUSBDevice(uint8_t* message, size_t size,
 void writeMessageFromUSBHost(uint8_t* message, size_t size,
     void* userData) {
     (void) userData;
+
+    handleLEDStateForMIDIMessage(message);
 
     // Only write to the UART and USB device port;
     // don't echo the message back to the USB host port.
@@ -65,6 +73,7 @@ void onSysexChunk(uint8_t* sysexData, size_t size, void* userData,
     (void) userData;
     (void) isFinal;
 
+    // TODO: Correctly handle sysex routing.
     uartMidiPort.write(sysexData, size);
     usbDevice.write(sysexData, size);
     usbHost.write(sysexData, size);

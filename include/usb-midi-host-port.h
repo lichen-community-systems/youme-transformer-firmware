@@ -2,6 +2,7 @@
 
 #include "pio_usb.h"
 #include "tusb.h"
+#include "class/midi/midi_host.h"
 #include "midi-port.h"
 
 struct USBMidiHostPortCallbackState {
@@ -18,8 +19,6 @@ template<size_t messageBufferSize = 4,
 class USBMidiHostPort: public MidiPort<
     messageBufferSize, sysexBufferSize, readBufferSize> {
 public:
-    static constexpr size_t USB_MIDI_PACKET_SIZE = 4;
-
     USBMidiHostPortCallbackState callbackState;
 
     void init(uint8_t usbDPPin,
@@ -52,6 +51,8 @@ public:
 
     void write(uint8_t* buffer, uint32_t numBytes) {
         // TODO: Handle virtual cables correctly.
+        // For now, just write MIDI data to the first device's
+        // first virtual cable.
         uint32_t bytesWritten = tuh_midi_stream_write(0, 0, buffer, numBytes);
 
         if (bytesWritten < numBytes) {
@@ -62,35 +63,26 @@ public:
     }
 };
 
-static int32_t mounts = 0;
+inline void readCable(uint8_t idx, uint8_t cableNum,
+    USBMidiHostPortCallbackState* state) {
+    size_t bytesRead = tuh_midi_stream_read(idx, &cableNum, state->readBuffer,
+        state->readBufferSize);
 
-
-void tuh_midi_mount_cb(uint8_t idx,
-    const tuh_midi_mount_cb_t* mount_cb_data) {
-    (void) idx;
-    (void) mount_cb_data;
-    mounts++;
-}
-
-// Invoked when device with hid interface is un-mounted
-void tuh_midi_umount_cb(uint8_t idx) {
-    (void) idx;
-    mounts--;
+    while (bytesRead > 0) {
+        sig_MidiParser_feedBytes(state->midiParser, state->readBuffer,
+            bytesRead);
+        bytesRead = tuh_midi_stream_read(idx, &cableNum, state->readBuffer,
+            state->readBufferSize);
+    }
 }
 
 void tuh_midi_rx_cb(uint8_t idx, uint32_t xferredBytes) {
     (void) xferredBytes;
-    uint8_t* readBuffer = USBMidiHostPort_stateSingleton->readBuffer;
-    size_t readBufferSize = USBMidiHostPort_stateSingleton->readBufferSize;
-    struct sig_MidiParser* midiParser = USBMidiHostPort_stateSingleton->midiParser;
 
-    while(tuh_midi_packet_read(idx, readBuffer) > 0) {
-        sig_MidiParser_feedBytes(midiParser, readBuffer, readBufferSize);
+    // TODO: Handle virtual cables correctly.
+    // For now, just read MIDI data from all virtual cables.
+    uint8_t numCables = tuh_midi_get_rx_cable_count(idx);
+    for (uint8_t i = 0; i < numCables; i++) {
+        readCable(idx, i, USBMidiHostPort_stateSingleton);
     }
 }
-
-void tuh_midi_tx_cb(uint8_t idx, uint32_t num_bytes) {
-    (void)idx;
-    (void)num_bytes;
-}
-
